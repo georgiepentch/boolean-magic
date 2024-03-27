@@ -11,6 +11,12 @@ def powerset(iterable):
     return chain.from_iterable(combinations(s, r) for r in range(1, len(s)+1))
 
 
+def f7(seq):
+    seen = set()
+    seen_add = seen.add
+    return [x for x in seq if not (x in seen or seen_add(x))]
+
+
 # DECIMAL DIGIT —> 7-SEGMENT DISPLAY
 dig_to_segs = {
     0: ['a', 'b', 'c', 'd', 'e', 'f'],
@@ -32,7 +38,7 @@ for digs, segs in dig_to_segs.items():
         segs_to_dig[seg] += [digs]
 
 
-class TruthTable:
+class TT:
     def __init__(self, out, padding='x', var_names=ascii_uppercase):
         """
         :param out: A string of '1' (True), '0' (False), and 'x' (Either) characters.
@@ -43,15 +49,14 @@ class TruthTable:
         self.entries = 1 << self.p  # num of rows
         self.out = out + (self.entries - len(out)) * padding
         self.var_names = var_names
-        self.expression = None
+        self.frmla = None
 
-    def table(self, tablefmt="fancy_outline"):
-        """:param tablefmt: The format of the table, as given by the 'tabulate' package."""
+    def __str__(self):
         varr = []
         for i in range(self.entries):
             varr.append(list(format(i, "0" + str(self.p) + "b")))
         varr = np.append(varr, [[k] for k in self.out], axis=1)
-        print(tb(varr, list(self.var_names[:self.p]) + [self.expression], tablefmt=tablefmt))
+        return tb(varr, list(self.var_names[:self.p]) + [self.frmla], tablefmt="fancy_outline")
 
     @classmethod
     def from_expression(cls, f):
@@ -65,23 +70,34 @@ class TruthTable:
 
     def qmc(self):
         out1 = self.out.replace('x', '1')
-        minterms = [([], i, [i]) for i, b in enumerate(out1) if b == '1']
-        # minterms = [(list of bits replaced by '-', minterm value when '-' = '0', list of minterms grouped together)]
+        minterms = [format(i, "0" + str(self.p) + "b") for i, b in enumerate(out1) if b == '1']
         iteration = -1
         x = 0
         while len(minterms) > x:
             iteration += 1
             x = len(minterms)
             for i in range(x):
-                if len(minterms[i][0]) < iteration:
+                if minterms[i].count('-') != iteration:
                     continue
                 for j in range(i + 1, x):
-                    t = minterms[i][1] ^ minterms[j][1]
-                    if set(minterms[i][0]) == set(minterms[j][0]) and t.bit_count() == 1:
-                        minterms.append((minterms[i][0] + [t], ~t & minterms[i][1], minterms[i][2] + minterms[j][2]))
+                    t = int(minterms[i].replace('-', '0'), 2) ^ int(minterms[j].replace('-', '0'), 2)
+                    if set([a for a, b in enumerate(minterms[i]) if b == '-']) \
+                            == set([a for a, b in enumerate(minterms[j]) if b == '-']) and t.bit_count() == 1:
+                        pos = format(t, "0" + str(self.p) + "b").index('1')
+                        minterms.append(minterms[i][:pos] + '-' + minterms[i][pos+1:])
+            minterms = f7(minterms)
 
-        implicants = [s[2] for s in reversed(minterms)]
-        numbers = set([s for term in minterms for s in term[2]])
+        implicants = []
+        for m in reversed(minterms):
+            dashes = m.count('-')
+            imp = []
+            for i in range(1 << dashes):
+                m1 = m
+                for bit in format(i, '0' + str(dashes) + 'b'):
+                    m1 = m1.replace('-', bit, 1)
+                imp += [int(m1, 2)]
+            implicants.append(imp)
+        numbers = set([i for i, b in enumerate(out1) if b == '1'])
         prime_implicants = []
         while numbers:
             prime_implicants.append(implicants[0])
@@ -132,5 +148,5 @@ class TruthTable:
                 expr = expr[:-len(andsym)]
             expr += ' ' + orsym + ' '
         expr = expr[:-len(orsym)-2]
-        self.expression = expr
+        self.frmla = expr
         return expr
