@@ -81,8 +81,8 @@ class TT:
                     continue
                 for j in range(i + 1, x):
                     t = int(minterms[i].replace('-', '0'), 2) ^ int(minterms[j].replace('-', '0'), 2)
-                    if set([a for a, b in enumerate(minterms[i]) if b == '-']) \
-                            == set([a for a, b in enumerate(minterms[j]) if b == '-']) and t.bit_count() == 1:
+                    if [a for a, b in enumerate(minterms[i]) if b == '-'] \
+                            == [a for a, b in enumerate(minterms[j]) if b == '-'] and t.bit_count() == 1:
                         pos = format(t, "0" + str(self.p) + "b").index('1')
                         minterms.append(minterms[i][:pos] + '-' + minterms[i][pos+1:])
             minterms = f7(minterms)
@@ -97,6 +97,7 @@ class TT:
                     m1 = m1.replace('-', bit, 1)
                 imp += [int(m1, 2)]
             implicants.append(imp)
+
         numbers = set([i for i, b in enumerate(out1) if b == '1'])
         prime_implicants = []
         while numbers:
@@ -109,12 +110,10 @@ class TT:
         flat_primes = [s for implicant in prime_implicants for s in implicant]
         essentials = set([e for e in numbers if flat_primes.count(e) == 1])
         final_implicants = [s for s in prime_implicants if set(s).intersection(essentials)]
-
         if len(prime_implicants) - len(final_implicants) > 2:
             remainder = [s for s in prime_implicants if s not in final_implicants]
-            nonessentials = set([s for implicant in remainder for s in implicant])
             for i in powerset(remainder):
-                if not set([a for b in i for a in b]) - nonessentials:
+                if not set([a for b in i for a in b]) - set(numbers):
                     final_implicants += list(i)
                     break
 
