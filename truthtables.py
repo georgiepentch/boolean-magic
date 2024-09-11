@@ -119,7 +119,7 @@ class TT:
 
         return final_implicants
 
-    def formula(self, style="sop"):
+    def formula(self, style=None):
         """:param style: Notation options. Default is sum of product. Alternatives are 'python', 'math', 'text'."""
 
         if style == "python":
